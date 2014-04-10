@@ -56,10 +56,10 @@ module Viewpoint::EWS::Types
     #
     # Uses `SetFolderField` if value is present and `DeleteFolderField` if value is nil
     # @param updates [Hash] with (:attribute => value)
-    # @return [FolderItem, false]
+    # @return [Folder, false]
     # @example Update Subject and Body
-    #   item = #...
-    #   item.update_item!(subject: 'New subject', body: 'New Body')
+    #   folder = #...
+    #   folder.update!(subject: 'New subject', body: 'New Body')
     # @see http://msdn.microsoft.com/en-us/library/exchange/aa580254.aspx
     def update!(updates)
       folder_updates = []
@@ -103,6 +103,18 @@ module Viewpoint::EWS::Types
       else
         raise EwsCreateItemError, "Could not update folder item. #{rm.code}: #{rm.message_text}" unless rm
       end
+    end
+
+    # Renames the current folder
+    #
+    # @param new_name [String]: the new folder name
+    # @return [Folder, false]
+    # @example Rename Folder
+    #   folder = #...
+    #   folder.rename!('New folder name')
+    def rename!(new_name)
+      raise EwsBadArgumentError, "Name argument must not be empts." unless new_name and !new_name.empty?
+      update! display_name: { text: new_name }
     end
 
     def items(opts = {})
