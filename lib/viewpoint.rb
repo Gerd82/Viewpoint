@@ -71,6 +71,7 @@ require 'ews/impersonation'
 # Base Types
 require 'ews/types'
 require 'ews/types/item_field_uri_map'
+require 'ews/types/folder_field_uri_map'
 require 'ews/types/generic_folder'
 require 'ews/types/item'
 # Folders
@@ -112,6 +113,7 @@ require 'ews/templates/message'
 require 'ews/templates/forward_item'
 require 'ews/templates/reply_to_item'
 require 'ews/templates/calendar_item'
+require 'ews/templates/folder'
 require 'ews/templates/task'
 
 # The proxy between the models and the web service

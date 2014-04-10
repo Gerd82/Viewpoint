@@ -858,7 +858,7 @@ module Viewpoint::EWS::SOAP
     def subject!(sub)
       nbuild[NS_EWS_TYPES].Subject(sub)
     end
-    
+
     def importance!(sub)
       nbuild[NS_EWS_TYPES].Importance(sub)
     end
@@ -1066,6 +1066,60 @@ module Viewpoint::EWS::SOAP
       @nbuild[NS_EWS_TYPES].AttachmentId(attribs)
     end
 
+    # @see http://msdn.microsoft.com/en-us/library/aa565620(v=exchg.140).aspx
+    def folder_changes!(changes)
+      nbuild.FolderChanges {
+        changes.each do |chg|
+          folder_change!(chg)
+        end
+      }
+    end
+
+    # @see http://msdn.microsoft.com/en-us/library/aa494297(v=exchg.140).aspx
+    def folder_change!(change)
+      @nbuild[NS_EWS_TYPES].FolderChange {
+        updates = change.delete(:updates) # Remove updates so dispatch_item_id works correctly
+        dispatch_folder_id!(change[:folder_id])
+        updates_folder!(updates)
+      }
+    end
+
+    # @see http://msdn.microsoft.com/en-us/library/aa564758(v=exchg.140).aspx
+    def updates_folder!(updates)
+      @nbuild[NS_EWS_TYPES].Updates {
+        updates.each do |update|
+          dispatch_update_type_folder!(update)
+        end
+      }
+    end
+
+    # @see http://msdn.microsoft.com/en-us/library/aa581338(v=exchg.140).aspx
+    # The AppendToFolderField element is not implemented. Any request that uses this element will always return an error response.
+    def append_to_folder_field!(upd)
+      raise Viewpoint::EWS::EwsNotImplemented,
+        "The AppendToFolderField element is not implemented."
+    end
+
+    # @see http://msdn.microsoft.com/en-us/library/aa581582(v=exchg.140).aspx
+    def set_folder_field!(upd)
+      uri = upd.select {|k,v| k =~ /_uri/i}
+      raise EwsBadArgumentError, "Bad argument given for SetFolderField." if uri.keys.length != 1
+      upd.delete(uri.keys.first)
+      @nbuild[NS_EWS_TYPES].SetFolderField {
+        dispatch_field_uri!(uri, NS_EWS_TYPES)
+        dispatch_field_item!(upd, NS_EWS_TYPES)
+      }
+    end
+
+    # @see http://msdn.microsoft.com/en-us/library/aa566408(v=exchg.140).aspx
+    def delete_folder_field!(upd)
+      uri = upd.select {|k,v| k =~ /_uri/i}
+      raise EwsBadArgumentError, "Bad argument given for DeleteFolderField." if uri.keys.length != 1
+      @nbuild[NS_EWS_TYPES].DeleteFoField {
+        dispatch_field_uri!(uri, NS_EWS_TYPES)
+      }
+    end
+
     def user_configuration_name!(cfg_name)
       attribs = {'Name' => cfg_name.delete(:name)}
       @nbuild[NS_EWS_MESSAGES].UserConfigurationName(attribs) {
@@ -1124,6 +1178,24 @@ module Viewpoint::EWS::SOAP
         set_item_field!(upd)
       when :delete_item_field
         delete_item_field!(upd)
+      else
+        raise EwsBadArgumentError, "Bad Update type. #{type}"
+      end
+    end
+
+    # A helper method to dispatch to a AppendToFolderField, SetFolderField, or
+    #   DeleteFolderField
+    # @param [Hash] update An update of some type
+    def dispatch_update_type_folder!(update)
+      type = update.keys.first
+      upd  = update[type]
+      case type
+      when :append_to_folder_field
+        append_to_folder_field!(upd)
+      when :set_folder_field
+        set_folder_field!(upd)
+      when :delete_folder_field
+        delete_folder_field!(upd)
       else
         raise EwsBadArgumentError, "Bad Update type. #{type}"
       end

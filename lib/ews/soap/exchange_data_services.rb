@@ -565,22 +565,34 @@ module Viewpoint::EWS::SOAP
     # for re-use.
     # @see http://msdn.microsoft.com/en-us/library/aa580519(v=EXCHG.140).aspx
     # @param [Array<Hash>] folder_changes an Array of well formatted Hashes
+
+    # Update properties for a specified folder
+    # @see http://msdn.microsoft.com/en-us/library/aa580519(v=EXCHG.140).aspx
+    #
+    # @param [Hash] opts
+    # @option opts [Array<Hash>] :folder_changes an array of FolderChange elements that identify items
+    #   and the updates to apply to the items. See the Microsoft docs for more information.
+    # @example
+    #   opts = {
+    #     :folder_changes => [
+    #       { :folder_id => {:id => 'id1'},
+    #         :updates => [
+    #           {:set_folder_field => {
+    #             :field_uRI => {:field_uRI => 'item:Subject'},
+    #             # The following needs to conform to #build_xml! format for now
+    #             :folder => { :sub_elements => [{:subject => {:text => 'Test Subject'}}]}
+    #           }}
+    #         ]
+    #       }
+    #     ]
+    #   }
     def update_folder(folder_changes)
       req = build_soap! do |type, builder|
         if(type == :header)
         else
           builder.nbuild.UpdateFolder {
             builder.nbuild.parent.default_namespace = @default_ns
-            builder.nbuild.FolderChanges {
-              folder_changes.each do |fc|
-                builder[NS_EWS_TYPES].FolderChange {
-                  builder.dispatch_folder_id!(fc)
-                  builder[NS_EWS_TYPES].Updates {
-                    # @todo finish implementation
-                  }
-                }
-              end
-            }
+            builder.folder_changes!(folder_changes)
           }
         end
       end

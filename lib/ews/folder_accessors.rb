@@ -22,6 +22,7 @@ module Viewpoint::EWS::FolderAccessors
     :mail     => 'IPF.Note',
     :calendar => 'IPF.Appointment',
     :task     => 'IPF.Task',
+    :contacts => 'IPF.Contact'
   }
 
   # Find subfolders of the passed root folder.  If no parameters are passed this
@@ -137,7 +138,7 @@ private
     folder_id = {:id => opts[:root]}
     folder_id[:act_as] = opts[:act_as] if opts[:act_as]
     if( opts[:folder_type] )
-      restr = { :is_equal_to => 
+      restr = { :is_equal_to =>
         [
           {:field_uRI => {:field_uRI=>'folder:FolderClass'}},
           {:field_uRI_or_constant=>{:constant =>

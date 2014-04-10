@@ -4,6 +4,7 @@ module Viewpoint::EWS::Types
     include Viewpoint::EWS
     include Viewpoint::EWS::Types
     include Viewpoint::EWS::ItemAccessors
+    include Viewpoint::EWS::FolderFieldUriMap
 
     GFOLDER_KEY_PATHS = {
       :folder_id        => [:folder_id, :attribs],
@@ -48,6 +49,59 @@ module Viewpoint::EWS::Types
         true
       else
         raise EwsError, "Could not delete folder. #{resp.code}: #{resp.message}"
+      end
+    end
+
+    # Updates the specified folder attributes
+    #
+    # Uses `SetFolderField` if value is present and `DeleteFolderField` if value is nil
+    # @param updates [Hash] with (:attribute => value)
+    # @return [FolderItem, false]
+    # @example Update Subject and Body
+    #   item = #...
+    #   item.update_item!(subject: 'New subject', body: 'New Body')
+    # @see http://msdn.microsoft.com/en-us/library/exchange/aa580254.aspx
+    def update!(updates)
+      folder_updates = []
+      updates.each do |attribute, value|
+        folder_field = FIELD_URIS[attribute][:text] if FIELD_URIS.include? attribute
+        field = {field_uRI: {field_uRI: folder_field}}
+
+        if value.nil? && folder_field
+          # Build DeleteItemField Change
+          folder_updates << {delete_folder_field: field}
+        elsif folder_field
+          # Build SetItemField Change
+          folder = Viewpoint::EWS::Template::Folder.new(attribute => value)
+
+          # Remap attributes because ews_builder #dispatch_field_item! uses #build_xml!
+          folder_attributes = folder.to_ews_item.map do |name, value|
+            if value.is_a? String
+              {name => {text: value}}
+            elsif value.is_a? Hash
+              node = {name => {}}
+              value.each do |attrib_key, attrib_value|
+                attrib_key = attrib_key.to_s.camel_case unless attrib_key == :text
+                node[name][attrib_key] = attrib_value
+              end
+              node
+            else
+              {name => value}
+            end
+          end
+
+          folder_updates << {set_folder_field: field.merge(self.class.to_s.demodulize.underscore.to_sym => {sub_elements: folder_attributes})}
+        else
+          # Ignore unknown attribute
+        end
+      end
+
+      rm = ews.update_folder( [{folder_id: self.folder_id, updates: folder_updates}] )
+      if rm && rm.success?
+        self.get_all_properties!
+        self
+      else
+        raise EwsCreateItemError, "Could not update folder item. #{rm.code}: #{rm.message_text}" unless rm
       end
     end
 
