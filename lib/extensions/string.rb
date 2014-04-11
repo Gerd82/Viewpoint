@@ -32,4 +32,9 @@ class String
       i.sub(/^./) { |s| s.upcase }
     }.join
   end
+
+  # Cuttes the namesspace of a class-string
+  def demodulized
+    self.split(/::/).last
+  end
 end # String

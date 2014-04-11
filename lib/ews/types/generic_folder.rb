@@ -90,7 +90,7 @@ module Viewpoint::EWS::Types
             end
           end
 
-          folder_updates << {set_folder_field: field.merge(self.class.to_s.demodulize.underscore.to_sym => {sub_elements: folder_attributes})}
+          folder_updates << {set_folder_field: field.merge(self.class.name.demodulized.ruby_case.to_sym => {sub_elements: folder_attributes})}
         else
           # Ignore unknown attribute
         end
