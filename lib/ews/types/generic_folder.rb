@@ -199,6 +199,36 @@ module Viewpoint::EWS::Types
       end
     end
 
+    # Creates a new item
+    # @param attributes [Hash] Parameters of the item.
+    # @return [Item]
+    # @see Templates
+    def create_item(attributes)
+      attributes = attributes.deep_compact if attributes.is_a?(Hash)
+      item_class = folder_item_type( self.class.name.demodulize )
+      puts "Item Class: ".bold + "#{ item_class }".red.bold + " - " + "#{ self.class }".yellow
+      puts ap attributes
+      template = Viewpoint::EWS::Template.const_get( item_class ).new attributes
+      template.saved_item_folder_id = {id: self.id, change_key: self.change_key}
+      rm = ews.create_item(template.to_ews_create).response_messages.first
+      if rm && rm.success?
+        Viewpoint::EWS::Types.const_get( item_class ).new ews, rm.items.first[ item_class.to_s.ruby_case.to_sym ][:elems].first
+      else
+        raise EwsCreateItemError, "Could not create item in folder. #{rm.code}: #{rm.message_text}" unless rm
+      end
+    end
+
+    def folder_item_type(folder_type)
+      case folder_type.to_s.demodulize.camel_case.to_sym
+      when :Folder            then :Item
+      when :ContactsFolder    then :Contact
+      when :CalendarFolder    then :CalendarItem
+      when :TasksFolder       then :Task
+      else
+        raise EwsBadArgumentError, "Not a proper folder type: :#{folder_type}"
+      end
+    end
+
     def get_all_properties!
       @ews_item = get_folder(:base_shape => 'AllProperties')
       simplify!
