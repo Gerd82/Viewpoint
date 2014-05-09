@@ -89,17 +89,23 @@ module Viewpoint::EWS::SOAP
         if(keys.length > 1 && !vals.is_a?(Hash))
           raise "invalid input: #{elems}"
         end
+
         vals = vals.first.clone
         se = vals.delete(:sub_elements)
         txt = vals.delete(:text)
         xmlns_attribute = vals.delete(:xmlns_attribute)
 
-        node = @nbuild.send(keys.first.to_s.camel_case, txt, vals) {|x|
-          build_xml!(se) if se
-        }
+        node  = if keys.first.is_a? Symbol and respond_to? keys.first.to_s + "!"
+                  self.send keys.first.to_s+"!", vals.empty? ? txt : vals
 
+                else
+                  @nbuild.send(keys.first.to_s.camel_case, txt, vals) {|x|
+                    build_xml!(se) if se
+                  }
+                end
         # Set node level namespace
         node.xmlns = NAMESPACES["xmlns:#{xmlns_attribute}"] if xmlns_attribute
+
       when 'Array'
         elems.each do |e|
           build_xml!(e)
