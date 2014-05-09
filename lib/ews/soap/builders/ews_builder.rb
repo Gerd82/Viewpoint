@@ -145,6 +145,14 @@ module Viewpoint::EWS::SOAP
       }
     end
 
+    # Build the QueryString element
+    # @see http://msdn.microsoft.com/en-us/library/ee693615.aspx
+    # @param [String] query_string
+    # @todo need fully support all options (AND, OR)
+    def query_string!(query_string)
+      @nbuild[NS_EWS_MESSAGES].QueryString(query_string)
+    end
+
     # Build the IndexedPageItemView element
     # @see http://msdn.microsoft.com/en-us/library/exchange/aa563549(v=exchg.150).aspx
     # @todo needs peer check
@@ -822,6 +830,14 @@ module Viewpoint::EWS::SOAP
       }
     end
 
+    def contact!(item)
+      nbuild[NS_EWS_TYPES].Contact {
+        item.each_pair {|k,v|
+          self.send("#{k}!", v)
+        }
+      }
+    end
+
     def task!(item)
       nbuild[NS_EWS_TYPES].Task {
         item.each_pair {|k,v|
@@ -863,6 +879,73 @@ module Viewpoint::EWS::SOAP
 
     def subject!(sub)
       nbuild[NS_EWS_TYPES].Subject(sub)
+    end
+
+    def file_as!(file_as)
+      nbuild[NS_EWS_TYPES].FileAs(file_as)
+    end
+
+    def file_as_mapping!(file_as_mapping)
+      nbuild[NS_EWS_TYPES].FileAsMapping(file_as_mapping.to_s.camel_case)
+    end
+
+    def first_name!(first_name)
+      nbuild[NS_EWS_TYPES].FirstName(first_name)
+    end
+
+    def given_name!(given_name)
+      nbuild[NS_EWS_TYPES].GivenName(given_name)
+    end
+
+    def middle_name!(middle_name)
+      nbuild[NS_EWS_TYPES].MiddleName(middle_name)
+    end
+
+    def last_name!(last_name)
+      nbuild[NS_EWS_TYPES].LastName(last_name)
+    end
+
+    def surname!(surname)
+      nbuild[NS_EWS_TYPES].Surname(surname)
+    end
+
+    def job_title!(job_title)
+      nbuild[NS_EWS_TYPES].JobTitle(job_title)
+    end
+
+    def complete_name!(complete_name)
+      nbuild[NS_EWS_TYPES].CompleteName{
+        title!(complete_name[:title])                    if complete_name[:title]
+        first_name!(complete_name[:given_name])          if complete_name[:given_name]
+        middle_name!(complete_name[:middle_name])        if complete_name[:fmiddle_name]
+        last_name!(complete_name[:last_name])            if complete_name[:last_name]
+        nbuild[NS_EWS_TYPES].Suffix(complete_name[:suffix])                 if complete_name[:suffix]
+        nbuild[NS_EWS_TYPES].Initials(complete_name[:initials])             if complete_name[:initials]
+        nbuild[NS_EWS_TYPES].FullName(complete_name[:full_name])            if complete_name[:full_name]
+        nbuild[NS_EWS_TYPES].Nickname(complete_name[:nickname])             if complete_name[:nickname]
+        nbuild[NS_EWS_TYPES].YomiFirstName(complete_name[:yomi_first_name]) if complete_name[:yomi_first_name]
+        nbuild[NS_EWS_TYPES].YomiLastName(complete_name[:yomi_last_name])   if complete_name[:yomi_last_name]
+      }
+    end
+
+    def company_name!(company_name)
+      nbuild[NS_EWS_TYPES].CompanyName(company_name)
+    end
+
+    def physical_addresses!(addresses)
+      nbuild[NS_EWS_TYPES].PhysicalAddresses{
+        addresses.each do |type, value|
+          # if value.respond_to?( deep_compact ) && !value.deep_compact.empty?
+            nbuild[NS_EWS_TYPES].Entry(:Key => type.to_s.camel_case){
+              nbuild[NS_EWS_TYPES].Street(value[:street])                     if value[:street]
+              nbuild[NS_EWS_TYPES].City(value[:city])                         if value[:city]
+              nbuild[NS_EWS_TYPES].State(value[:state])                       if value[:state]
+              nbuild[NS_EWS_TYPES].CountryOrRegion(value[:country_or_region]) if value[:country_or_region]
+              nbuild[NS_EWS_TYPES].PostalCode(value[:postal_code])            if value[:postal_code]
+            }
+          # end
+        end
+      }
     end
 
     def importance!(sub)
@@ -973,6 +1056,30 @@ module Viewpoint::EWS::SOAP
     #                 Exchange Server 2013 = [Free, Tentative, Busy, OOF, WorkingElsewhere, NoData]
     def legacy_free_busy_status!(state)
       nbuild[NS_EWS_TYPES].LegacyFreeBusyStatus(state)
+    end
+
+    # @see http://msdn.microsoft.com/en-us/library/aa563540(v=exchg.150).aspx
+    # possible keys: assistant_phone, business_fax, business_phone, business_phone2, callback, carPhone, company_main_phone
+    #                home_fax, home_phone, home_phone2, isdn, mobile_phone, other_fax, other_telephone, pager, primary_phone
+    #                radio_phone, telex, tty_tdd_phone
+    def phone_numbers!(phone_numbers)
+      nbuild[NS_EWS_TYPES].PhoneNumbers {
+        phone_numbers.each do |type, number|
+          nbuild[NS_EWS_TYPES].Entry(number, :Key => type.to_s.camel_case)
+        end
+      }
+    end
+
+    # @see http://msdn.microsoft.com/en-us/library/aa563540(v=exchg.150).aspx
+    # possible keys: assistant_phone, business_fax, business_phone, business_phone2, callback, carPhone, company_main_phone
+    #                home_fax, home_phone, home_phone2, isdn, mobile_phone, other_fax, other_telephone, pager, primary_phone
+    #                radio_phone, telex, tty_tdd_phone
+    def email_addresses!(email)
+      nbuild[NS_EWS_TYPES].EmailAddresses {
+        email.each do |type, address|
+          nbuild[NS_EWS_TYPES].Entry(address, :Key => type.to_s.camel_case)
+        end
+      }
     end
 
     # @see http://msdn.microsoft.com/en-us/library/aa565428(v=exchg.140).aspx
