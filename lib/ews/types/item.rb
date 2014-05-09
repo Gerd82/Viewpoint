@@ -241,8 +241,89 @@ module Viewpoint::EWS::Types
       dispatch_create_item! msg
     end
 
+    # Updates the specified item attributes
+    #
+    # Uses `SetItemField` if value is present and `DeleteItemField` if value is nil
+    # @param updates [Hash] with (:attribute => value)
+    # @param options [Hash]
+    # @option options :conflict_resolution [String] one of 'NeverOverwrite', 'AutoResolve' (default) or 'AlwaysOverwrite'
+    # @option options :send_meeting_invitations_or_cancellations [String] one of 'SendToNone' (default), 'SendOnlyToAll',
+    #   'SendOnlyToChanged', 'SendToAllAndSaveCopy' or 'SendToChangedAndSaveCopy'
+    # @return [CalendarItem, false]
+    # @example Update Subject and Body
+    #   item = #...
+    #   item.update_item!(subject: 'New subject', body: 'New Body')
+    # @see http://msdn.microsoft.com/en-us/library/exchange/aa580254.aspx
+    # @todo AppendToItemField updates not implemented
+    def update!(updates, options = {})
+      item_updates = []
+      updates.each do |attribute, value|
+        if value.is_a? Hash
+          value.each do |vAttribute, vValue|
+            item_updates << update_helper(attribute, {vAttribute => vValue} )
+          end
+        else
+          item_updates << update_helper(attribute, value)
+        end
+      end
+
+      if item_updates.any?
+        data = {}
+        data[:conflict_resolution] = options[:conflict_resolution] || 'AutoResolve'
+        data[:send_meeting_invitations_or_cancellations] = options[:send_meeting_invitations_or_cancellations] || 'SendToNone'
+        data[:item_changes] = [{item_id: self.item_id, updates: item_updates}]
+        rm = ews.update_item(data).response_messages.first
+        if rm && rm.success?
+          self.get_all_properties!
+          self
+        else
+          raise EwsCreateItemError, "Could not update calendar item. #{rm.code}: #{rm.message_text}" unless rm
+        end
+      end
+
+    end
 
     private
+
+    def update_helper(attribute, value)
+      item_field = FIELD_URIS[attribute][:text] if FIELD_URIS.include? attribute
+      uRI_type   = FIELD_URIS[attribute][:ftype]||:field_uRI
+
+      field_uRI  = {field_uRI: item_field}
+      field_uRI.merge!(field_index: value.keys.first.to_s.camel_case) if uRI_type == :indexed_field_uRI
+      field = {uRI_type => field_uRI }
+
+      if value.nil? && item_field or value.is_a?(Hash) && value.values.first.nil?
+        # Build DeleteItemField Change
+        {delete_item_field: field}
+      elsif item_field
+        # Build SetItemField Change
+        item = Viewpoint::EWS::Template.const_get( self.class.name.demodulize ).new(attribute => value)
+
+        {set_item_field: field.merge( self.class.name.demodulize.ruby_case => {sub_elements: remap_attributes( item.to_ews_item ) })}
+      else
+        # Ignore unknown attribute
+      end
+    end
+
+    def remap_attributes( item_attributes )
+      # Remap attributes because ews_builder #dispatch_field_item! uses #build_xml!
+      item_attributes.map do |name, value|
+        if value.is_a? String
+          {name => {text: value}}
+        elsif value.is_a? Hash
+          node = value.map{|v,k| {name => {v => k} } }
+          # node = {name => {sub_elements:  remap_attributes( value ) }}
+          # value.each do |attrib_key, attrib_value|
+          #   attrib_key = attrib_key.to_s.camel_case unless attrib_key == :text
+          #   node[name][attrib_key] = attrib_value
+          # end
+          # node
+        else
+          {name => value}
+        end
+      end
+    end
 
     def key_paths
       super.merge(ITEM_KEY_PATHS)
