@@ -114,6 +114,8 @@ require 'ews/templates/message'
 require 'ews/templates/forward_item'
 require 'ews/templates/reply_to_item'
 require 'ews/templates/calendar_item'
+require 'ews/templates/contact'
+require 'ews/templates/item'
 require 'ews/templates/folder'
 require 'ews/templates/task'
 
