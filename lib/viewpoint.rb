@@ -25,6 +25,7 @@ require 'logging'
 
 # Class Extensions (Monkey patches)
 require 'extensions/string'
+require 'extensions/hash'
 
 module Viewpoint
   module EWS
