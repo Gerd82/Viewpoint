@@ -900,7 +900,7 @@ module Viewpoint::EWS::SOAP
     end
 
     def file_as_mapping!(file_as_mapping)
-      nbuild[NS_EWS_TYPES].FileAsMapping(file_as_mapping.to_s.camel_case)
+      nbuild[NS_EWS_TYPES].FileAsMapping( camel_case( file_as_mapping ) )
     end
 
     def first_name!(first_name)
@@ -950,7 +950,7 @@ module Viewpoint::EWS::SOAP
       nbuild[NS_EWS_TYPES].PhysicalAddresses{
         addresses.each do |type, value|
           # if value.respond_to?( deep_compact ) && !value.deep_compact.empty?
-            nbuild[NS_EWS_TYPES].Entry(:Key => type.to_s.camel_case){
+            nbuild[NS_EWS_TYPES].Entry(:Key => camel_case( type ) ){
               nbuild[NS_EWS_TYPES].Street(value[:street])                     if value[:street]
               nbuild[NS_EWS_TYPES].City(value[:city])                         if value[:city]
               nbuild[NS_EWS_TYPES].State(value[:state])                       if value[:state]
@@ -1079,7 +1079,7 @@ module Viewpoint::EWS::SOAP
     def phone_numbers!(phone_numbers)
       nbuild[NS_EWS_TYPES].PhoneNumbers {
         phone_numbers.each do |type, number|
-          nbuild[NS_EWS_TYPES].Entry(number, :Key => type.to_s.camel_case)
+          nbuild[NS_EWS_TYPES].Entry(number, :Key => camel_case( type ) )
         end
       }
     end
@@ -1091,7 +1091,7 @@ module Viewpoint::EWS::SOAP
     def email_addresses!(email)
       nbuild[NS_EWS_TYPES].EmailAddresses {
         email.each do |type, address|
-          nbuild[NS_EWS_TYPES].Entry(address, :Key => type.to_s.camel_case)
+          nbuild[NS_EWS_TYPES].Entry(address, :Key => camel_case( type ) )
         end
       }
     end

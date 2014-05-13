@@ -3,6 +3,7 @@ module Viewpoint::EWS::Types
     include Viewpoint::EWS
     include Viewpoint::EWS::Types
     include ItemFieldUriMap
+    include Viewpoint::StringUtils
 
     def self.included(klass)
       klass.extend ClassMethods
@@ -301,7 +302,7 @@ module Viewpoint::EWS::Types
       uRI_type   = FIELD_URIS[attribute][:ftype]||:field_uRI
 
       field_uRI  = {field_uRI: item_field}
-      field_uRI.merge!(field_index: value.keys.first.to_s.camel_case) if uRI_type == :indexed_field_uRI
+      field_uRI.merge!(field_index: camel_case( value.keys.first ) ) if uRI_type == :indexed_field_uRI
       field = {uRI_type => field_uRI }
 
       if value.nil? && item_field or value.is_a?(Hash) && value.values.first.nil?
@@ -311,7 +312,7 @@ module Viewpoint::EWS::Types
         # Build SetItemField Change
         item = Viewpoint::EWS::Template.const_get( self.class.name.demodulize ).new(attribute => value)
 
-        {set_item_field: field.merge( self.class.name.demodulize.ruby_case => {sub_elements: remap_attributes( item.to_ews_item ) })}
+        {set_item_field: field.merge( ruby_case( self.class.name.demodulize ) => {sub_elements: remap_attributes( item.to_ews_item ) })}
       else
         # Ignore unknown attribute
       end
@@ -326,7 +327,7 @@ module Viewpoint::EWS::Types
           node = value.map{|v,k| {name => {v => k} } }
           # node = {name => {sub_elements:  remap_attributes( value ) }}
           # value.each do |attrib_key, attrib_value|
-          #   attrib_key = attrib_key.to_s.camel_case unless attrib_key == :text
+          #   attrib_key = camel_case( attrib_key ) unless attrib_key == :text
           #   node[name][attrib_key] = attrib_value
           # end
           # node

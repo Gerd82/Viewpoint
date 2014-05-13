@@ -4,6 +4,7 @@ module Viewpoint::EWS::SOAP
   # @see http://msdn.microsoft.com/en-us/library/bb409286.aspx
   module ExchangeDataServices
     include Viewpoint::EWS::SOAP
+    include Viewpoint::StringUtils
 
     # -------------- Item Operations -------------
 
@@ -775,10 +776,10 @@ module Viewpoint::EWS::SOAP
         else
           builder.nbuild.ConvertId {|x|
             builder.nbuild.parent.default_namespace = @default_ns
-            x.parent['DestinationFormat'] = opts[:destination_format].to_s.camel_case
+            x.parent['DestinationFormat'] = camel_case( opts[:destination_format] )
             x.SourceIds { |x|
               x[NS_EWS_TYPES].AlternateId { |x|
-                x.parent['Format'] = opts[:format].to_s.camel_case
+                x.parent['Format'] = camel_case( opts[:format] )
                 x.parent['Id'] = opts[:id]
                 x.parent['Mailbox'] = opts[:mailbox]
               }

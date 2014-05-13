@@ -101,7 +101,7 @@ module Viewpoint::EWS::Types
             elsif value.is_a? Hash
               node = {name => {}}
               value.each do |attrib_key, attrib_value|
-                attrib_key = attrib_key.to_s.camel_case unless attrib_key == :text
+                attrib_key = camel_case( attrib_key ) unless attrib_key == :text
                 node[name][attrib_key] = attrib_value
               end
               node
@@ -110,7 +110,7 @@ module Viewpoint::EWS::Types
             end
           end
 
-          folder_updates << {set_folder_field: field.merge(self.class.name.demodulized.ruby_case.to_sym => {sub_elements: folder_attributes})}
+          folder_updates << {set_folder_field: field.merge( ruby_case( self.class.name.demodulized ).to_sym => {sub_elements: folder_attributes})}
         else
           # Ignore unknown attribute
         end
@@ -232,14 +232,14 @@ module Viewpoint::EWS::Types
       template.saved_item_folder_id = {id: self.id, change_key: self.change_key}
       rm = ews.create_item(template.to_ews_create).response_messages.first
       if rm && rm.success?
-        Viewpoint::EWS::Types.const_get( item_class ).new ews, rm.items.first[ item_class.to_s.ruby_case.to_sym ][:elems].first
+        Viewpoint::EWS::Types.const_get( item_class ).new ews, rm.items.first[ ruby_case( item_class ).to_sym ][:elems].first
       else
         raise EwsCreateItemError, "Could not create item in folder. #{rm.code}: #{rm.message_text}" unless rm
       end
     end
 
     def folder_item_type(folder_type)
-      case folder_type.to_s.demodulize.camel_case.to_sym
+      case camel_case( folder_type.to_s.demodulize ).to_sym
       when :Folder            then :Item
       when :ContactsFolder    then :Contact
       when :CalendarFolder    then :CalendarItem
