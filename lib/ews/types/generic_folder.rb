@@ -226,8 +226,6 @@ module Viewpoint::EWS::Types
     def create_item(attributes)
       attributes = attributes.deep_compact if attributes.is_a?(Hash)
       item_class = folder_item_type( self.class.name.demodulize )
-      puts "Item Class: ".bold + "#{ item_class }".red.bold + " - " + "#{ self.class }".yellow
-      puts ap attributes
       template = Viewpoint::EWS::Template.const_get( item_class ).new attributes
       template.saved_item_folder_id = {id: self.id, change_key: self.change_key}
       rm = ews.create_item(template.to_ews_create).response_messages.first
