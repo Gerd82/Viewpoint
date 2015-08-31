@@ -278,10 +278,10 @@ module Viewpoint::EWS::Types
       updates.each do |attribute, value|
         if value.is_a? Hash
           value.each do |vAttribute, vValue|
-            item_updates << update_helper(attribute, {vAttribute => vValue} )
+            item_updates += update_helper(attribute, {vAttribute => vValue} )
           end
         else
-          item_updates << update_helper(attribute, value)
+          item_updates += update_helper(attribute, value)
         end
       end
 
@@ -304,24 +304,46 @@ module Viewpoint::EWS::Types
     private
 
     def update_helper(attribute, value)
-      item_field = FIELD_URIS[attribute][:text] if FIELD_URIS.include? attribute
-      uRI_type   = FIELD_URIS[attribute][:ftype]||:field_uRI
+      result  = []
+      values  = []
+      type    = nil
 
-      field_uRI  = {field_uRI: item_field}
-      field_uRI.merge!(field_index: camel_case( value.keys.first ) ) if uRI_type == :indexed_field_uRI
-      field = {uRI_type => field_uRI }
+      if value.is_a? Hash
+        value.each do |k1,v|
+          if v.is_a? Hash
+            values  = v.map{|k,v| { k1 => { k => v }}}
+          else
+            values  = [{ k1 => v }]
+          end
+        end
 
-      if value.nil? && item_field or value.is_a?(Hash) && value.values.first.nil?
-        # Build DeleteItemField Change
-        {delete_item_field: field}
-      elsif item_field
-        # Build SetItemField Change
-        item = Viewpoint::EWS::Template.const_get( self.class.name.demodulize ).new(attribute => value)
-
-        {set_item_field: field.merge( ruby_case( self.class.name.demodulize ) => {sub_elements: remap_attributes( item.to_ews_item ) })}
       else
-        # Ignore unknown attribute
+        values = [value]
       end
+
+      values.each do |value|
+        key        = value.values.first.keys.first        if value.is_a? Hash and value.values.first.is_a? Hash
+        ext_attribute = [attribute, key].compact.join('_').to_sym
+        item_field = FIELD_URIS[ext_attribute][:text]     if FIELD_URIS.include? ext_attribute
+        uRI_type   = FIELD_URIS[ext_attribute].try(:[], :ftype)||:field_uRI
+
+        field_uRI  = {field_uRI: item_field}
+        field_uRI.merge!(field_index: camel_case( value.keys.first ) ) if uRI_type == :indexed_field_uRI
+        field = {uRI_type => field_uRI }
+
+        result << if value.nil? && item_field or value.is_a?(Hash) && value.values.first.nil?
+                    # Build DeleteItemField Change
+                    {delete_item_field: field}
+                  elsif item_field
+                    # Build SetItemField Change
+                    item = Viewpoint::EWS::Template.const_get( self.class.name.demodulize ).new(attribute => value)
+
+                    {set_item_field: field.merge( ruby_case( self.class.name.demodulize ) => {sub_elements: remap_attributes( item.to_ews_item ) })}
+                  else
+                    # Ignore unknown attribute
+                  end
+      end
+      result
     end
 
     def remap_attributes( item_attributes )
@@ -330,16 +352,23 @@ module Viewpoint::EWS::Types
         if value.is_a? String
           {name => {text: value}}
         elsif value.is_a? Hash
-          node = value.map{|v,k| {name => {v => k} } }
-          # node = {name => {sub_elements:  remap_attributes( value ) }}
-          # value.each do |attrib_key, attrib_value|
-          #   attrib_key = camel_case( attrib_key ) unless attrib_key == :text
-          #   node[name][attrib_key] = attrib_value
-          # end
-          # node
+          node  = value.map do |v,k|
+                    {name => {sub_elements: [{entry: { :Key  => camel_case(v)}.merge( remap_sub_attributes(k) ) }]} }
+                  end
         else
           {name => value}
         end
+      end
+    end
+
+    def remap_sub_attributes( item )
+      case item
+      when Array
+        { sub_elements: item }
+      when Hash
+        { sub_elements: item.map{|k,v| { k => remap_sub_attributes( v ) } }}
+      else
+        { text: item }
       end
     end
 
